@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+.venv/
+venv/
+
+# Ruff cache
+.ruff_cache/
+
+# Generated data files
+labs/lab01/data/*.csv
+labs/lab01/data/*.json
+
+# OS files
+.DS_Store
