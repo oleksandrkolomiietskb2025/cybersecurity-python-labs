@@ -61,31 +61,45 @@ def create_user(username: str, password: str) -> tuple:
 
 def create_users(users_list: tuple) -> None:
     """Створює CSV-базу користувачів у data/users.csv."""
-    os.makedirs(DATA_DIR, exist_ok=True)
-
-    with open(USERS_CSV_PATH, mode="w", newline="", encoding="utf-8") as csv_file:
-        writer = csv.writer(csv_file)
-        for username, password in users_list:
-            try:
-                login, hash_value = create_user(username, password)
-                writer.writerow([login, hash_value])
-            except (ValueError, ValidationError) as error:
-                print(f"Пропущено користувача {username}: {error}")
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(USERS_CSV_PATH, mode="w", newline="", encoding="utf-8") as csv_file:
+            writer = csv.writer(csv_file)
+            for username, password in users_list:
+                try:
+                    login_name, hash_value = create_user(username, password)
+                    writer.writerow([login_name, hash_value])
+                except (ValueError, ValidationError) as error:
+                    print(f"Пропущено користувача {username}: {error}")
+    except FileNotFoundError as error:
+        print(f"Файл не знайдено: {error}")
+    except PermissionError as error:
+        print(f"Немає прав доступу до файлу users.csv: {error}")
+    except OSError as error:
+        print(f"Помилка вводу/виводу під час запису users.csv: {error}")
 
 
 def read_users_db() -> list:
     """Зчитує CSV-базу користувачів у список кортежів (логін, хеш)."""
     users_db = []
-    with open(USERS_CSV_PATH, mode="r", newline="", encoding="utf-8") as csv_file:
-        reader = csv.reader(csv_file)
-        for row in reader:
-            if row:
-                users_db.append((row[0], row[1]))
+    try:
+        with open(USERS_CSV_PATH, mode="r", newline="", encoding="utf-8") as csv_file:
+            reader = csv.reader(csv_file)
+            for row in reader:
+                if row:
+                    users_db.append((row[0], row[1]))
+    except FileNotFoundError as error:
+        print(f"Файл users.csv не знайдено: {error}")
+    except PermissionError as error:
+        print(f"Немає прав доступу до файлу users.csv: {error}")
+    except OSError as error:
+        print(f"Помилка вводу/виводу під час читання users.csv: {error}")
     return users_db
 
 
-def print_users_db(users_db: list) -> None:
-    """Виводить базу користувачів у вигляді структурованої таблиці."""
+def print_users_db() -> None:
+    """Зчитує CSV-базу користувачів і виводить її у вигляді таблиці."""
+    users_db = read_users_db()
     print(f"{'Логін':<15} | {'Хеш пароля':<32}")
     print("-" * 50)
     for login, hash_value in users_db:
@@ -109,18 +123,23 @@ def log_event(func):
             "kwargs": {},
         }
 
-        os.makedirs(DATA_DIR, exist_ok=True)
-        events = []
-        if os.path.exists(LOG_JSON_PATH):
-            try:
-                with open(LOG_JSON_PATH, "r", encoding="utf-8") as log_file:
-                    events = json.load(log_file)
-            except (OSError, json.JSONDecodeError):
-                events = []
+        try:
+            os.makedirs(DATA_DIR, exist_ok=True)
+            events = []
+            if os.path.exists(LOG_JSON_PATH):
+                try:
+                    with open(LOG_JSON_PATH, "r", encoding="utf-8") as log_file:
+                        events = json.load(log_file)
+                except json.JSONDecodeError:
+                    events = []
 
-        events.append(entry)
-        with open(LOG_JSON_PATH, "w", encoding="utf-8") as log_file:
-            json.dump(events, log_file, ensure_ascii=False, indent=2)
+            events.append(entry)
+            with open(LOG_JSON_PATH, "w", encoding="utf-8") as log_file:
+                json.dump(events, log_file, ensure_ascii=False, indent=2)
+        except PermissionError as error:
+            print(f"Немає прав доступу до файлу log.json: {error}")
+        except OSError as error:
+            print(f"Помилка вводу/виводу під час запису log.json: {error}")
 
         return result
 
@@ -130,48 +149,47 @@ def log_event(func):
 @log_event
 def login(username: str, password: str) -> bool:
     """Перевіряє логін та пароль користувача проти бази у CSV."""
-    if not username or not password:
-        raise ValueError("Логін та пароль не можуть бути порожніми")
+    try:
+        if not username or not password:
+            raise ValueError("Логін та пароль не можуть бути порожніми")
 
-    users_db = read_users_db()
-    expected_hash = generate_hash(password, PERSONAL_SALT)
+        users_db = read_users_db()
+        expected_hash = generate_hash(password, PERSONAL_SALT)
 
-    for login_name, stored_hash in users_db:
-        if login_name == username and stored_hash == expected_hash:
-            return True
-    return False
+        for login_name, stored_hash in users_db:
+            if login_name == username and stored_hash == expected_hash:
+                return True
+        return False
+    except ValidationError as error:
+        print(f"Помилка валідації: {error}")
+        return False
+    except ValueError as error:
+        print(f"Некоректні дані: {error}")
+        return False
 
 
 def main() -> None:
-    """Точка входу для завдання 3."""
+    """Точка входу для завдання 3.
+
+    Сама функція main() винятків не обробляє — вся обробка помилок
+    файлової роботи та автентифікації винесена у функції create_users,
+    read_users_db та login, які викликаються нижче.
+    """
     print(f"Студент: {STUDENT_NAME}, Група: {GROUP_NAME}, Варіант: {VARIANT_NUMBER}\n")
 
-    try:
-        create_users(USERS_TO_REGISTER)
-        users_db = read_users_db()
-        print_users_db(users_db)
+    create_users(USERS_TO_REGISTER)
+    print_users_db()
 
-        print("\nСпроби автентифікації:")
-        test_cases = [
-            ("alice", "Str0ngP@ssword"),
-            ("bob", "WrongPassword"),
-            ("unknown_user", "SomePassword1"),
-        ]
-        for username, password in test_cases:
-            success = login(username, password)
-            status = "успішно" if success else "невдало"
-            print(f"  {username}: {status}")
-
-    except FileNotFoundError as error:
-        print(f"Файл не знайдено: {error}")
-    except PermissionError as error:
-        print(f"Немає прав доступу до файлу: {error}")
-    except OSError as error:
-        print(f"Помилка вводу/виводу: {error}")
-    except ValidationError as error:
-        print(f"Помилка валідації: {error}")
-    except ValueError as error:
-        print(f"Некоректні дані: {error}")
+    print("\nСпроби автентифікації:")
+    test_cases = [
+        ("alice", "Str0ngP@ssword"),
+        ("bob", "WrongPassword"),
+        ("unknown_user", "SomePassword1"),
+    ]
+    for username, password in test_cases:
+        success = login(username, password)
+        status = "успішно" if success else "невдало"
+        print(f"  {username}: {status}")
 
 
 if __name__ == "__main__":
