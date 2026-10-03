@@ -16,3 +16,5 @@ labs/lab01/data/*.json
 
 # OS files
 .DS_Store
+
+labs/lab02/data/**/phishing_report.csv
