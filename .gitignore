@@ -13,8 +13,8 @@ venv/
 # Generated data files
 labs/lab01/data/*.csv
 labs/lab01/data/*.json
+labs/lab02/data/data_v12
+labs/lab03/data
 
 # OS files
 .DS_Store
-
-labs/lab02/data/**/phishing_report.csv

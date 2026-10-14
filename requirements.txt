@@ -1,1 +1,5 @@
-ruff
+fastapi==0.143.1
+pydantic==2.14.1
+pydantic_core==2.50.1
+ruff==0.16.10
+uvicorn==0.54.0
