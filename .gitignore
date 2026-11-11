@@ -18,3 +18,5 @@ labs/lab03/data
 
 # OS files
 .DS_Store
+
+.pytest_cache/
